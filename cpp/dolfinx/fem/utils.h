@@ -431,13 +431,15 @@ pack_coefficients(const U& u)
       num_cells, offsets.back());
   if (coefficients.size() > 0)
   {
-    for (int cell = 0; cell < num_cells; ++cell)
+
+    for (std::size_t coeff = 0; coeff < dofmaps.size(); ++coeff)
     {
-      for (std::size_t coeff = 0; coeff < dofmaps.size(); ++coeff)
+      const Eigen::Ref<const Eigen::Matrix<T, Eigen::Dynamic, 1>>& _v
+          = v[coeff];
+      for (int cell = 0; cell < num_cells; ++cell)
       {
         auto dofs = dofmaps[coeff]->cell_dofs(cell);
-        const Eigen::Ref<const Eigen::Matrix<T, Eigen::Dynamic, 1>>& _v
-            = v[coeff];
+
         for (Eigen::Index i = 0; i < dofs.size(); ++i)
         {
           for (int k = 0; k < bs[coeff]; ++k)
