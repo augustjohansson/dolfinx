@@ -16,8 +16,8 @@ CoordinateElement::CoordinateElement(
     int basix_element_handle, int geometric_dimension,
     const std::string& signature, const ElementDofLayout& dof_layout,
     bool needs_permutation_data,
-    std::function<int(int*, const uint32_t)> get_dof_permutation,
-    const std::function<int(double*, const std::uint32_t, const int)>
+    std::function<int(int*, const std::uint32_t)> get_dof_permutation,
+    const std::function<int(double*, std::uint32_t, int)>
         apply_dof_transformation)
     : _gdim(geometric_dimension), _signature(signature),
       _dof_layout(dof_layout), _basix_element_handle(basix_element_handle),
@@ -26,11 +26,10 @@ CoordinateElement::CoordinateElement(
       _apply_dof_transformation(apply_dof_transformation)
 {
   const mesh::CellType cell = cell_shape();
-  int degree = basix::degree(basix_element_handle);
   _is_affine
       = ((cell == mesh::CellType::interval or cell == mesh::CellType::triangle
           or cell == mesh::CellType::tetrahedron)
-         and degree == 1);
+         and basix::degree(basix_element_handle) == 1);
 }
 //-----------------------------------------------------------------------------
 std::string CoordinateElement::signature() const { return _signature; }

@@ -38,8 +38,8 @@ public:
       int basix_element_handle, int geometric_dimension,
       const std::string& signature, const ElementDofLayout& dof_layout,
       bool needs_permutation_data,
-      std::function<int(int*, const uint32_t)> get_dof_permutation,
-      const std::function<int(double*, const std::uint32_t, const int)>
+      std::function<int(int*, const std::uint32_t)> get_dof_permutation,
+      const std::function<int(double*, std::uint32_t, const int)>
           apply_dof_transformation);
 
   /// Destructor
@@ -127,10 +127,10 @@ private:
   bool _needs_permutation_data;
 
   // Dof permutation maker
-  std::function<int(int*, const uint32_t)> _get_dof_permutation;
+  std::function<int(int*, std::uint32_t)> _get_dof_permutation;
 
   // apply_dof_transformation
-  std::function<int(double*, const std::uint32_t, const int)>
+  std::function<int(double*, std::uint32_t, int)>
       _apply_dof_transformation;
 };
 } // namespace dolfinx::fem
