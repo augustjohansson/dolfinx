@@ -382,7 +382,7 @@ void assemble_interior_facets(
       coordinate_dofs(2 * num_dofs_g, gdim);
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Ae;
   std::vector<T> coeff_array(2 * offsets.back());
-  assert(offsets.back() == coeffs.cols());
+  assert(offsets.back() == coeffs.num_links(0));
 
   // Temporaries for joint dofmaps
   std::vector<std::int32_t> dmapjoint0, dmapjoint1;

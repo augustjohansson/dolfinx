@@ -264,7 +264,7 @@ T assemble_interior_facets(
   Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
       coordinate_dofs(2 * num_dofs_g, gdim);
   std::vector<T> coeff_array(2 * offsets.back());
-  assert(offsets.back() == coeffs.cols());
+  assert(offsets.back() == coeffs.num_links(0));
 
   auto f_to_c = mesh.topology().connectivity(tdim - 1, tdim);
   assert(f_to_c);
