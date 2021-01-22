@@ -139,8 +139,7 @@ void _lift_bc_cells(
 
   // Data structures used in bc application
   std::vector<double> coordinate_dofs(num_dofs_g * gdim);
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Ae;
-  Eigen::Matrix<T, Eigen::Dynamic, 1> be;
+  std::vector<T> Ae, be;
 
   for (std::int32_t c : active_cells)
   {
@@ -176,13 +175,18 @@ void _lift_bc_cells(
     // Size data structure for assembly
     auto dmap0 = dofmap0.links(c);
 
+    const int num_rows = bs0 * dmap0.size();
+    const int num_cols = bs1 * dmap1.size();
+
     auto coeff_array = coeffs.links(c);
-    Ae.setZero(bs0 * dmap0.size(), bs1 * dmap1.size());
+    Ae.resize(num_rows * num_cols);
+    std::fill(Ae.begin(), Ae.end(), 0.0);
     kernel(Ae.data(), coeff_array.data(), constant_values.data(),
            coordinate_dofs.data(), nullptr, nullptr, cell_info[c]);
 
     // Size data structure for assembly
-    be.setZero(bs0 * dmap0.size());
+    be.resize(num_rows);
+    std::fill(be.begin(), be.end(), 0.0);
     for (std::size_t j = 0; j < dmap1.size(); ++j)
     {
       for (int k = 0; k < bs1; ++k)
@@ -192,10 +196,10 @@ void _lift_bc_cells(
         if (bc_markers1[jj])
         {
           const T bc = bc_values1[jj];
-          if (!x0.empty())
-            be -= Ae.col(bs1 * j + k) * scale * (bc - x0[jj]);
-          else
-            be -= Ae.col(bs1 * j + k) * scale * bc;
+          const T _x0 = x0.empty() ? 0.0 : x0[jj];
+          // b -= Ae.col(bs1 * j + k) * scale
+          for (std::size_t m = 0; m < be.size(); ++m)
+            be[m] -= Ae[m * num_rows + bs1 * j + k] * scale * (bc - _x0);
         }
       }
     }
@@ -204,7 +208,7 @@ void _lift_bc_cells(
       for (int k = 0; k < bs0; ++k)
         b[bs0 * dmap0[i] + k] += be[bs0 * i + k];
   }
-}
+} // namespace dolfinx::fem::impl
 //----------------------------------------------------------------------------
 template <typename T>
 void _lift_bc_exterior_facets(
