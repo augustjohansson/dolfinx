@@ -10,7 +10,7 @@
 #include "DofMap.h"
 #include "Form.h"
 #include "utils.h"
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include <dolfinx/common/IndexMap.h>
 #include <dolfinx/common/types.h>
 #include <dolfinx/fem/Constant.h>
@@ -43,8 +43,7 @@ void assemble_cells(
     const graph::AdjacencyList<std::int32_t>& dofmap, const int bs,
     const std::function<void(T*, const T*, const T*, const double*, const int*,
                              const std::uint8_t*, const std::uint32_t)>& kernel,
-    const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-        coeffs,
+    const graph::AdjacencyList<T>& coeffs,
     const std::vector<T>& constant_values,
     const std::vector<std::uint32_t>& cell_info);
 
@@ -56,8 +55,7 @@ void assemble_exterior_facets(
     const graph::AdjacencyList<std::int32_t>& dofmap, const int bs,
     const std::function<void(T*, const T*, const T*, const double*, const int*,
                              const std::uint8_t*, const std::uint32_t)>& fn,
-    const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-        coeffs,
+    const graph::AdjacencyList<T>& coeffs,
     const std::vector<T>& constant_values,
     const std::vector<std::uint32_t>& cell_info,
     const Eigen::Array<std::uint8_t, Eigen::Dynamic, Eigen::Dynamic>& perms);
@@ -69,9 +67,8 @@ void assemble_interior_facets(
     const std::vector<std::int32_t>& active_facets, const fem::DofMap& dofmap,
     const std::function<void(T*, const T*, const T*, const double*, const int*,
                              const std::uint8_t*, const std::uint32_t)>& fn,
-    const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-        coeffs,
-    const std::vector<int>& offsets, const std::vector<T>& constant_values,
+    const graph::AdjacencyList<T>& coeffs, const std::vector<int>& offsets,
+    const std::vector<T>& constant_values,
     const std::vector<std::uint32_t>& cell_info,
     const Eigen::Array<std::uint8_t, Eigen::Dynamic, Eigen::Dynamic>& perms);
 
@@ -125,8 +122,7 @@ void _lift_bc_cells(
     const std::vector<std::int32_t>& active_cells,
     const graph::AdjacencyList<std::int32_t>& dofmap0, int bs0,
     const graph::AdjacencyList<std::int32_t>& dofmap1, int bs1,
-    const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-        coeffs,
+    const graph::AdjacencyList<T>& coeffs,
     const std::vector<T>& constant_values,
     const std::vector<std::uint32_t>& cell_info,
     const tcb::span<const T>& bc_values1, const std::vector<bool>& bc_markers1,
@@ -180,7 +176,7 @@ void _lift_bc_cells(
     // Size data structure for assembly
     auto dmap0 = dofmap0.links(c);
 
-    auto coeff_array = coeffs.row(c);
+    auto coeff_array = coeffs.links(c);
     Ae.setZero(bs0 * dmap0.size(), bs1 * dmap1.size());
     kernel(Ae.data(), coeff_array.data(), constant_values.data(),
            coordinate_dofs.data(), nullptr, nullptr, cell_info[c]);
@@ -218,8 +214,7 @@ void _lift_bc_exterior_facets(
     const std::vector<std::int32_t>& active_facets,
     const graph::AdjacencyList<std::int32_t>& dofmap0, int bs0,
     const graph::AdjacencyList<std::int32_t>& dofmap1, int bs1,
-    const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-        coeffs,
+    const graph::AdjacencyList<T>& coeffs,
     const std::vector<T>& constant_values,
     const std::vector<std::uint32_t>& cell_info,
     const Eigen::Array<std::uint8_t, Eigen::Dynamic, Eigen::Dynamic>& perms,
@@ -294,7 +289,7 @@ void _lift_bc_exterior_facets(
     // Size data structure for assembly
     auto dmap0 = dofmap0.links(cell);
 
-    auto coeff_array = coeffs.row(cell);
+    auto coeff_array = coeffs.links(cell);
     Ae.setZero(bs0 * dmap0.size(), bs1 * dmap1.size());
     kernel(Ae.data(), coeff_array.data(), constant_values.data(),
            coordinate_dofs.data(), &local_facet, &perms(local_facet, cell),
@@ -332,9 +327,8 @@ void _lift_bc_interior_facets(
     const std::vector<std::int32_t>& active_facets,
     const graph::AdjacencyList<std::int32_t>& dofmap0, int bs0,
     const graph::AdjacencyList<std::int32_t>& dofmap1, int bs1,
-    const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-        coeffs,
-    const std::vector<int>& offsets, const std::vector<T>& constant_values,
+    const graph::AdjacencyList<T>& coeffs, const std::vector<int>& offsets,
+    const std::vector<T>& constant_values,
     const std::vector<std::uint32_t>& cell_info,
     const Eigen::Array<std::uint8_t, Eigen::Dynamic, Eigen::Dynamic>& perms,
     const tcb::span<const T>& bc_values1, const std::vector<bool>& bc_markers1,
@@ -356,7 +350,7 @@ void _lift_bc_interior_facets(
       coordinate_dofs(2 * num_dofs_g, gdim);
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Ae;
   std::vector<T> coeff_array(2 * offsets.back());
-  assert(offsets.back() == coeffs.cols());
+  assert(offsets.back() == coeffs.num_links(0));
   Eigen::Matrix<T, Eigen::Dynamic, 1> be;
 
   // Temporaries for joint dofmaps
@@ -449,8 +443,8 @@ void _lift_bc_interior_facets(
 
     // Layout for the restricted coefficients is flattened
     // w[coefficient][restriction][dof]
-    auto coeff_cell0 = coeffs.row(cells[0]);
-    auto coeff_cell1 = coeffs.row(cells[1]);
+    auto coeff_cell0 = coeffs.links(cells[0]);
+    auto coeff_cell1 = coeffs.links(cells[1]);
 
     // Loop over coefficients
     for (std::size_t i = 0; i < offsets.size() - 1; ++i)
@@ -539,8 +533,7 @@ void assemble_vector(tcb::span<T> b, const Form<T>& L)
   const std::vector<T> constant_values = pack_constants(L);
 
   // Prepare coefficients
-  const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> coeffs
-      = pack_coefficients(L);
+  graph::AdjacencyList<T> coeffs = pack_coefficients(L);
 
   const bool needs_permutation_data = L.needs_permutation_data();
   if (needs_permutation_data)
@@ -598,8 +591,7 @@ void assemble_cells(
     const graph::AdjacencyList<std::int32_t>& dofmap, const int bs,
     const std::function<void(T*, const T*, const T*, const double*, const int*,
                              const std::uint8_t*, const std::uint32_t)>& kernel,
-    const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-        coeffs,
+    const graph::AdjacencyList<T>& coeffs,
     const std::vector<T>& constant_values,
     const std::vector<std::uint32_t>& cell_info)
 {
@@ -632,7 +624,7 @@ void assemble_cells(
 
     // Tabulate vector for cell
     std::fill(be.begin(), be.end(), 0);
-    kernel(be.data(), coeffs.row(c).data(), constant_values.data(),
+    kernel(be.data(), coeffs.links(c).data(), constant_values.data(),
            coordinate_dofs.data(), nullptr, nullptr, cell_info[c]);
 
     // Scatter cell vector to 'global' vector array
@@ -650,8 +642,7 @@ void assemble_exterior_facets(
     const graph::AdjacencyList<std::int32_t>& dofmap, const int bs,
     const std::function<void(T*, const T*, const T*, const double*, const int*,
                              const std::uint8_t*, const std::uint32_t)>& fn,
-    const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-        coeffs,
+    const graph::AdjacencyList<T>& coeffs,
     const std::vector<T>& constant_values,
     const std::vector<std::uint32_t>& cell_info,
     const Eigen::Array<std::uint8_t, Eigen::Dynamic, Eigen::Dynamic>& perms)
@@ -699,7 +690,7 @@ void assemble_exterior_facets(
 
     // Tabulate element vector
     std::fill(be.begin(), be.end(), 0);
-    fn(be.data(), coeffs.row(cell).data(), constant_values.data(),
+    fn(be.data(), coeffs.links(cell).data(), constant_values.data(),
        coordinate_dofs.data(), &local_facet, &perms(local_facet, cell),
        cell_info[cell]);
 
@@ -717,9 +708,8 @@ void assemble_interior_facets(
     const std::vector<std::int32_t>& active_facets, const fem::DofMap& dofmap,
     const std::function<void(T*, const T*, const T*, const double*, const int*,
                              const std::uint8_t*, const std::uint32_t)>& fn,
-    const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-        coeffs,
-    const std::vector<int>& offsets, const std::vector<T>& constant_values,
+    const graph::AdjacencyList<T>& coeffs, const std::vector<int>& offsets,
+    const std::vector<T>& constant_values,
     const std::vector<std::uint32_t>& cell_info,
     const Eigen::Array<std::uint8_t, Eigen::Dynamic, Eigen::Dynamic>& perms)
 {
@@ -739,7 +729,7 @@ void assemble_interior_facets(
       coordinate_dofs(2 * num_dofs_g, gdim);
   std::vector<T> be;
   std::vector<T> coeff_array(2 * offsets.back());
-  assert(offsets.back() == coeffs.cols());
+  assert(offsets.back() == coeffs.num_links(0));
 
   const int bs = dofmap.bs();
   auto f_to_c = mesh.topology().connectivity(tdim - 1, tdim);
@@ -776,8 +766,8 @@ void assemble_interior_facets(
 
     // Layout for the restricted coefficients is flattened
     // w[coefficient][restriction][dof]
-    auto coeff_cell0 = coeffs.row(cells[0]);
-    auto coeff_cell1 = coeffs.row(cells[1]);
+    auto coeff_cell0 = coeffs.links(cells[0]);
+    auto coeff_cell1 = coeffs.links(cells[1]);
 
     // Loop over coefficients
     for (std::size_t i = 0; i < offsets.size() - 1; ++i)
@@ -889,8 +879,7 @@ void lift_bc(tcb::span<T> b, const Form<T>& a,
   const std::vector<T> constant_values = pack_constants(a);
 
   // Prepare coefficients
-  const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> coeffs
-      = pack_coefficients(a);
+  const graph::AdjacencyList coeffs = pack_coefficients(a);
 
   const bool needs_permutation_data = a.needs_permutation_data();
   if (needs_permutation_data)

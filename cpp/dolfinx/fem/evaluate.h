@@ -32,11 +32,10 @@ void eval(
   assert(mesh);
 
   // Prepare coefficients
-  Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> coeffs
-      = dolfinx::fem::pack_coefficients(e);
+  const graph::AdjacencyList<T> coeffs = fem::pack_coefficients(e);
 
   // Prepare constants
-  const std::vector<T> constant_values = dolfinx::fem::pack_constants(e);
+  const std::vector<T> constant_values = fem::pack_constants(e);
 
   const auto& fn = e.get_tabulate_expression();
 
@@ -79,7 +78,7 @@ void eval(
         coordinate_dofs(j, k) = x_g(x_dof, k);
     }
 
-    auto coeff_cell = coeffs.row(c);
+    auto coeff_cell = coeffs.links(c);
     std::fill(values_e.begin(), values_e.end(), 0.0);
     fn(values_e.data(), coeff_cell.data(), constant_values.data(),
        coordinate_dofs.data());
