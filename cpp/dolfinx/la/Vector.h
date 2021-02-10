@@ -8,6 +8,7 @@
 
 #include <dolfinx/common/IndexMap.h>
 #include <memory>
+#include <numeric>
 
 namespace dolfinx::la
 {
@@ -55,6 +56,23 @@ public:
   /// Get local part of the vector
   std::vector<T>& mutable_array() { return _x; }
 
+  /// Vector inner product of the local part of this vector with the local part
+  /// of another vector. To get the global inner product, do a global reduce
+  /// with MPI_SUM.
+  /// @param b Another la::Vector of the same size
+  /// @return Inner product of the local part of this vector with b
+  T inner_product(const Vector<T>& b)
+  {
+    const std::int32_t local_size = _bs * _map->size_local();
+    if (b._bs * b._map->size_local() != local_size)
+    {
+      throw std::runtime_error("Incompatible vector for inner_product");
+    }
+    T p = std::transform_reduce(_x.begin(), _x.begin() + local_size,
+                                b._x.begin(), 0.0);
+    return p;
+  }
+
 private:
   // Map describing the data layout
   std::shared_ptr<const common::IndexMap> _map;
@@ -65,4 +83,5 @@ private:
   // Data
   std::vector<T> _x;
 };
+
 } // namespace dolfinx::la
