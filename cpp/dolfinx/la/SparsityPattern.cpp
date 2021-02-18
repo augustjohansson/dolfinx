@@ -217,7 +217,9 @@ void SparsityPattern::assemble()
     throw std::runtime_error("Sparsity pattern has already been finalised.");
   assert(!_off_diagonal);
 
-  common::Timer t0("SparsityPattern::assemble");
+  common::Timer t0("~SparsityPattern::assemble");
+
+  common::Timer t1("~SparsityPattern::create_global_to_local_map");
 
   assert(_index_maps[0]);
   const std::int32_t local_size0 = _index_maps[0]->size_local();
@@ -238,6 +240,9 @@ void SparsityPattern::assemble()
   std::int32_t local_i = local_size1;
   for (std::int64_t global_i : ghosts1)
     global_to_local.insert({global_i, local_i++});
+  t1.stop();
+
+  common::Timer t2("~SparsityPattern::Prepare send data");
 
   // Get ghost->owner communicator
   MPI_Comm comm = _index_maps[0]->comm(common::IndexMap::Direction::reverse);
@@ -289,6 +294,8 @@ void SparsityPattern::assemble()
       insert_counter[local_index] += 3;
     }
   }
+  t2.stop();
+  common::Timer t3("~SparsityPattern::Neighborhood alltoall");
 
   // Create and communicate adjacencylist to neighborhood
   // Reserve pointer for openMPI to work
@@ -299,6 +306,9 @@ void SparsityPattern::assemble()
   graph::AdjacencyList<std::int64_t> ghost_data_out(ghost_data, counter_out);
   graph::AdjacencyList<std::int64_t> ghost_data_in
       = MPI::neighbor_all_to_all(comm, ghost_data_out);
+  t3.stop();
+
+  common::Timer t4("~SparsityPattern::add recv data");
 
   // Add data received from the neighborhood
   const std::vector<std::int64_t>& in_ghost_data = ghost_data_in.array();
@@ -326,6 +336,8 @@ void SparsityPattern::assemble()
       _cache_owned[row_local].push_back(col_local);
     }
   }
+  t4.stop();
+  common::Timer t5("~SparsityPattern::sort and remove");
 
   // Sort and remove duplicates
   std::vector<std::int32_t> adj_counts(local_size0, 0);
@@ -357,7 +369,9 @@ void SparsityPattern::assemble()
   std::vector<std::int32_t> adj_offsets_off(local_size0 + 1);
   std::partial_sum(adj_counts_off.begin(), adj_counts_off.end(),
                    adj_offsets_off.begin() + 1);
+  t5.stop();
 
+  common::Timer t6("~SparsityPattern::new col map ++");
   // FIXME: after assembly, there are no ghost rows, i.e. the IndexMap for rows
   // should be non-overlapping. However, we are retaining the row overlap
   // information and associated mapping, as this will be needed for matrix
@@ -381,6 +395,7 @@ void SparsityPattern::assemble()
 
   _off_diagonal = std::make_shared<graph::AdjacencyList<std::int32_t>>(
       std::move(adj_data_off), std::move(adj_offsets_off));
+  t6.stop();
 }
 //-----------------------------------------------------------------------------
 std::int64_t SparsityPattern::num_nonzeros() const
