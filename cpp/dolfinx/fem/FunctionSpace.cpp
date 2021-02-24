@@ -154,6 +154,9 @@ array2d<double> FunctionSpace::tabulate_dof_coordinates(bool transpose) const
   array2d<double> x(scalar_dofs, gdim);
   array2d<double> coordinate_dofs(num_dofs_g, gdim);
 
+  array2d<double> phi(X.shape[0], gdim);
+  cmap.tabulate_basis(phi, X);
+
   auto map = _mesh->topology().index_map(tdim);
   assert(map);
   const int num_cells = map->size_local() + map->num_ghosts();
@@ -167,7 +170,7 @@ array2d<double> FunctionSpace::tabulate_dof_coordinates(bool transpose) const
         coordinate_dofs(i, j) = x_g(x_dofs[i], j);
 
     // Tabulate dof coordinates on cell
-    cmap.push_forward(x, X, coordinate_dofs);
+    cmap.push_forward(x, X, coordinate_dofs, phi);
 
     // Get cell dofmap
     auto dofs = _dofmap->cell_dofs(c);

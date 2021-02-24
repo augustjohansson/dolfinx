@@ -71,8 +71,16 @@ public:
   /// @param[in,out] x The physical coordinates of the reference points X
   /// @param[in] X The coordinates on the reference cells
   /// @param[in] cell_geometry The cell node coordinates (physical)
+  /// @param[in] phi The cell node coordinates (physical)
   void push_forward(array2d<double>& x, const array2d<double>& X,
-                    const array2d<double>& cell_geometry) const;
+                    const array2d<double>& cell_geometry,
+                    const array2d<double>& phi) const;
+
+  /// Compute physical coordinates x for points X  in the reference
+  /// configuration
+  /// @param[in,out] phi The physical coordinates of the reference points X
+  /// @param[in] X The coordinates on the reference cells
+  void tabulate_basis(array2d<double>& phi, const array2d<double>& X) const;
 
   /// Compute reference coordinates X, and J, detJ and K for physical
   /// coordinates x

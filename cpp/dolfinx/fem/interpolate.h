@@ -267,18 +267,23 @@ void interpolate(Function<T>& u,
 
   array2d<double> coordinate_dofs(num_dofs_g, gdim);
 
+  array2d<double> phi(X.shape[0], gdim);
+  cmap.tabulate_basis(phi, X);
+
   array2d<T> reference_data(value_size, X.shape[0]);
 
   std::vector<T>& coeffs = u.x()->mutable_array();
   std::vector<T> _coeffs(num_scalar_dofs);
   array2d<T> _vals(value_size, X.shape[0]);
+
   for (std::int32_t c : cells)
   {
     auto x_dofs = x_dofmap.links(c);
     for (int i = 0; i < num_dofs_g; ++i)
       for (int j = 0; j < gdim; ++j)
         coordinate_dofs(i, j) = x_g(x_dofs[i], j);
-    cmap.push_forward(x_cell, X, coordinate_dofs);
+
+    cmap.push_forward(x_cell, X, coordinate_dofs, phi);
 
     cmap.compute_reference_geometry(X_ref, J, detJ, K, x_cell, coordinate_dofs);
 
