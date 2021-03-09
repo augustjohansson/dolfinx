@@ -4,18 +4,20 @@ import dolfinx
 from dolfinx import UnitSquareMesh, FunctionSpace
 from dolfinx.cpp.mesh import CellType
 import ufl
-from ufl import FiniteElement, MixedElement, VectorElement
+from ufl import FiniteElement, MixedElement
 from ufl import dx, inner, split
 import pytest
 
 
-@pytest.mark.parametrize("element", ["Lagrange", "N1curl"])
+@pytest.mark.parametrize("element", [
+    FiniteElement("Lagrange", ufl.triangle, 1),
+    FiniteElement("N1curl", ufl.triangle, 1)
+])
 def test_splitting(element):
     mesh = UnitSquareMesh(MPI.COMM_WORLD, 1, 1, CellType.triangle,
                           dolfinx.cpp.mesh.GhostMode.shared_facet)
 
-    U_el = FiniteElement(element, ufl.triangle, 1)
-    U = FunctionSpace(mesh, U_el)
+    U = FunctionSpace(mesh, element)
     u = ufl.TrialFunction(U)
     v = ufl.TestFunction(U)
     a = inner(u, v) * dx
@@ -25,8 +27,7 @@ def test_splitting(element):
     result0 = A.convert('dense').getDenseArray()
     dofs0 = list(U.dofmap.cell_dofs(0))
 
-    U_el = MixedElement([FiniteElement(element, ufl.triangle, 1), FiniteElement(element, ufl.triangle, 1)])
-    U = FunctionSpace(mesh, U_el)
+    U = FunctionSpace(mesh, MixedElement(element, element))
     u = ufl.TrialFunction(U)
     v = ufl.TestFunction(U)
     a = inner(split(u)[0], split(v)[0]) * dx
