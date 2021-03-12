@@ -158,16 +158,6 @@ RUN cd /usr/local && \
     cmake -G Ninja -DCMAKE_INSTALL_PREFIX=${KAHIP_DIR} -DNONATIVEOPTIMIZATIONS=On .. && \
     ninja install
 
-
-# # Download Install Gmsh SDK
-# RUN cd /usr/local && \
-#     wget -nc --quiet http://gmsh.info/bin/Linux/gmsh-${GMSH_VERSION}-Linux64-sdk.tgz && \
-#     tar -xf gmsh-${GMSH_VERSION}-Linux64-sdk.tgz && \
-#     rm gmsh-${GMSH_VERSION}-Linux64-sdk.tgz
-
-# ENV PATH=/usr/local/gmsh-${GMSH_VERSION}-Linux64-sdk/bin:$PATH \
-#     PYTHONPATH=/usr/local/gmsh-${GMSH_VERSION}-Linux64-sdk/lib:$PYTHONPATH
-
 # Install PETSc and petsc4py with real and complex types
 ENV PETSC_DIR=/usr/local/petsc SLEPC_DIR=/usr/local/slepc
 WORKDIR /tmp
