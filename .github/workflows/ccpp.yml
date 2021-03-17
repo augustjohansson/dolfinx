@@ -40,7 +40,7 @@ jobs:
         with:
           path: ./basix
           repository: FEniCS/basix
-          ref: main
+          ref: garth/momenet-xtensor
 
       - name: Install FEniCS Python components
         run: |
